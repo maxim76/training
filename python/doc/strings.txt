@@ -1,0 +1,129 @@
+Strings are used to record both textual information (your name, for instance) as well
+as arbitrary collections of bytes (such as an image file’s contents).
+
+Initialization:
+S = 's\np\ta\x00m'	# String with escape sequences
+S = r'\temp\spam'	# Raw strings (no escapes)
+B = b'sp\xc4m'		# Byte strings
+U = u'sp\u00c4m'	# Unicode strings
+
+Special characters can be represented as backslash escape sequences, which Python displays in 
+\xNN hexadecimal escape notation, unless they represent printable characters:
+
+>>> S = 'A\0B\0C' # \0, a binary zero byte, does not terminate string
+>>> S # Non-printables are displayed as \xNN hex escapes
+'A\x00B\x00C'
+
+Passing non ASCII characters to strings:
+\xNN		- with hexadecimal escape (works for byte strings and text strings)
+\uNNNN		- with short unicode escape (works for text strings only)
+\uNNNNNNNN	- with long unicode escape (works for text strings only)
+
+
+Python also supports a raw string literal that turns off the backslash escape mechanism.
+Such literals start with the letter r and are useful for strings like directory paths on
+Windows (e.g., r'C:\text\new').
+
+
+In Python 2.X: 
+--------------
+Normal str is byte string. Handles both 8-bit character strings (including ASCII text) and raw byte values; 
+a distinct unicode string type represents Unicode text;
+>>> 'sp\xc4m'			# Normal str strings are byte string
+'sp\xc4m'
+>>> print u'sp\xc4m'	# Unicode strings are a distinct type
+spÄm
+>>> b'sp\xc4m'			# The 3.X bytes literal works in 2.x as just str
+'sp\xc4m'
+
+
+In Python 3.X:
+--------------
+Normal str is text string. Handles Unicode text (including ASCII, which is just a simple kind of Unicode); 
+a distinct bytes string type represents raw byte values (including media and encoded text);
+>>> 'sp\xc4m'			# Normal str strings are Unicode text
+'spÄm'
+>>> b'sp\xc4m'			# bytes strings are byte-based data
+b'sp\xc4m'
+>>> u'sp\xc4m'			# The 2.X Unicode literal works in 3.X as just str
+'spÄm'
+
+
+Formally, in both 2.X and 3.X, non-Unicode strings are sequences of 8-bit bytes that
+print with ASCII characters when possible, and Unicode strings are sequences of Unicode
+code points—identifying numbers for characters, which do not necessarily map to
+single bytes when encoded to files or stored in memory.
+
+encode/decode
+-------------
+encode - converts printable characters into encoded form
+decode - converts encoded form of text into decoded (printable) code point values
+
+Python 2.X:
+>>> S='Hello'  (it's byte string in Python 2.X)
+>>> S.decode()
+u'Hello'
+
+Python 3.X:    (it's text (unicode) string in Python 2.X)
+>>> S='Hello'
+>>> S.encode()
+b'Hello'
+
+Warning about Python 2.X string:
+----------------------------------
+While in Python 2.X normal string is byte string, it's actually in some cases behaives as a text string and it makes difficulties.
+Examlpe 2.X:
+>>> S=b'ABCDE'
+>>> S
+'ABCDE'		<-- it's supposed to be bytestring. Just 'b' is not pronted in Python 2.X
+
+>>> type(S[0])
+<type 'str'>  <-- why it's string instead of int ???
+
+>>> type(S.encode()[0])
+<type 'str'>	<--- encode does not help, however encode should not even be allowed to call
+
+>>> type(S.decode()[0])
+<type 'unicode'>	<--- decode works fine
+
+>>> ['%d' % c for c in S]
+TypeError: %d format: a number is required, not str		<--- does not work, becasue S items is str, not int
+
+>>> ['%d' % ord(c) for c in S]
+['65', '66', '67', '68', '69']		<--- Have to cast char to int
+
+In Python 3.X everything works as designed:
+>>> S='ABCDE'
+'ABCDE'
+>>> S2=b'ABCDE'
+b'ABCDE'
+>>> type(S[0])
+<class 'str'>
+>>> type(S2[0])
+<class 'int'>
+>>> type(S.encode()[0])
+<class 'int'>
+>>> type(S2.decode()[0])
+<class 'str'>
+>>> ['%d' % ord(c) for c in S]				<-- OK
+>>> ['%d' % c for c in S.encode()]			<-- OK
+>>> ['%d' % c for c in S2]					<-- OK
+>>> ['%d' % ord(c) for c in S2.decode()]	<-- OK
+
+bytearray works similarly in Python 2.X and Pythin 3.X and may be a solution for predictability and cross versioning
+
+
+bytearray
+------------
+Mutable byte string. Works similarly in Python 2.X and 3.X
+>>> B = bytearray(b'Hello')
+>>> B
+bytearray(b'Hello')
+>>> B.decode()
+'Hello'		# will be u'Hello' in Python 2.X
+
+Initializing bytearrays:
+B = bytearray.fromhex('102030')
+
+Printing bytearrays:
+['%d' % c for c in B]

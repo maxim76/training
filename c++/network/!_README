@@ -1,0 +1,37 @@
+Content:
+========
+network\*.cpp		- sources of network test examples
+network\Makefile	- makefile for building binaries under linux
+network\bin\linux	- binaries for linux
+network\bin\windows	- binaries for windows
+network\build		- projects for windows build using Visual Studio
+network\cert		- certificates for tools that use ssl
+
+Examples:
+=========
+
+common					- library for pretty print network addresses
+
+connect_test			- Tests connect() function.
+
+dtls_send				- DTLS sender
+dtls_echo_server		- Single-thread blocking DTLS echo-server. Uses connected UDP sockets for every client (but currently support 1 client at time only). Works on Linux only
+dtls_echo_server_simple	- Single-thread blocking DTLS echo-server. Uses single socket for all communications and supports only 1 client connection per time. Works on Linux and Windows
+
+getaddrinfo_test		- Tests getaddrinfo() function
+gethostname_test		- Tests gethostname() function
+getsockname_test		- Tests getsockname() function
+
+listen_test				- Tests listen() function
+
+reuseaddr_test			- Tests SO_REUSEADDR socket option
+
+tcp_client				- Simple TCP client
+tcp_server				- Simple TCP Server
+
+udp_client	 			- Simple UDP client
+udp_server				- UDP server
+udp_send				- UDP sender. Supports a lot of sending options
+udp_connected_client 	- Simple UDP client. Uses connected UDP socket
+udp_connected_server	- UDP server. Uses connected UDP socket
+udp_server_select		- UDP server with select()

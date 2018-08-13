@@ -1,0 +1,25 @@
+﻿Addition		Сложение
+
+Subtraction		Вычитание
+	minuend			уменьшаемое
+	subtrahend		вычитаемое
+	difference		разность
+
+Multiplication	Умножение
+	factor		множитель
+	product		произведение
+
+Division		Деление
+	Numerator (dividend)	-	делимое
+	Denominator (divisor)	-	делитель
+	Quotient				-	частное
+	Remainder				-	остаток
+
+	N/D = (Q, R)
+
+GCD (Greatest common divisor), HCF (highest common factor) - НОД (Наибольший общий делитель)
+LCM (lowest common multiple) - НОК (Наименьшее общее кратное)
+
+
+prime factorizations
+Euclid's algorithm

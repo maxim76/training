@@ -1,0 +1,18 @@
+cmake_minimum_required (VERSION 2.6)
+
+# Create project with this name
+project (skiena)
+
+# Build result will be written to
+set(EXECUTABLE_OUTPUT_PATH "../bin/windows")
+
+# Define a list of files to be included in project
+set( CHAPTER_07
+	ex07_01.cpp
+)
+
+# Group chapter exercises together
+SOURCE_GROUP( "Chapter07" FILES ${CHAPTER_07} )
+
+# Define executable to be breated from all above-listed sources
+add_executable(skiena ${CHAPTER_07})

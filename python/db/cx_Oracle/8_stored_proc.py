@@ -10,7 +10,7 @@ import dbconfig
 db = cx_Oracle.connect(dbconfig.username, dbconfig.password, dbconfig.database)
 cursor = db.cursor()
 
-# Outout parameters definition
+# Output parameters definition
 l_version = cursor.var(cx_Oracle.STRING)
 l_compatibility = cursor.var(cx_Oracle.STRING)
 

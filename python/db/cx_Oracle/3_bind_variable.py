@@ -1,5 +1,6 @@
 import cx_Oracle
 import dbconfig
+from pprint import pprint
 
 # create db connection
 db = cx_Oracle.connect(dbconfig.username, dbconfig.password, dbconfig.database)
@@ -9,7 +10,7 @@ cursor.execute(
     {'object_name_template':'%I'})
 
 print('configured binding:')
-print(cursor.bindnames())
+pprint(cursor.bindnames())
 
 print('Select result:')
 for row in cursor:

@@ -56,3 +56,6 @@ udp_connected_server: udp_connected_server.cpp common.cpp
 
 udp_server_select: udp_server_select.cpp
 	g++ -o $(BINARY_DIR)/$@ $^ -std=c++11 
+
+udp_server_nonblocking: udp_server_nonblocking.cpp common.cpp
+	g++ -o $(BINARY_DIR)/$@ $^ -std=c++11

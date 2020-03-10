@@ -1,0 +1,35 @@
+Network server classes are defined in socketserver.py and http/server.py modules
+
+General approach how to create server application:
+1. Create request handler class by subclassing one of xxxRequestHandler (that suit the best the nature of application) and 
+overriding its method that process incoming requests. 
+In different handler it may be different methods, and for example in the most general BaseRequestHandler class the method to override is handle()
+
+2. Create an instance of one of server classes (that suit the best the nature of application) and pass request handler to it.
+
+3. Call  the server class method handle_request()  to serve the single request or serve_forever() to serving continiously.
+
+4. Keep in mind that handlers process requests synchronously; each request must be completed before the next request can be started.
+If the request must be served in parallel, use ThreadingXXX classes
+
+
+HTTPServer
+==========
+Derived from TCPServer and the only difference is overriden server_bind() method, that defines two new properties:
+* self.server_name
+* self.server_name
+
+
+ThreadingUDPServer
+==================
+class ThreadingUDPServer(ThreadingMixIn, UDPServer): pass
+
+ThreadingTCPServer
+==================
+class ThreadingTCPServer(ThreadingMixIn, TCPServer): pass
+
+
+ThreadingHTTPServer
+===================
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+    daemon_threads = True

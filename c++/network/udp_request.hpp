@@ -19,8 +19,12 @@ public:
 	UDPRequest( const char *host, int port, int localPort = 0);
 	~UDPRequest();
 	bool send( unsigned int  req_id, char *data, size_t len);
-	bool recv( unsigned int  *req_id, char *data, size_t *len);
+
+	void update();
 private:
+	bool recv( unsigned int  *req_id, char *data, size_t *len);
+
+	//processRequest( unsigned int  req_id );
 	int sockFD;
 	int sendAttempts;
 	int sendTimeout;

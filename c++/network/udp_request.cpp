@@ -14,6 +14,7 @@
 
 #include <assert.h>
 #include <ctime>
+#include <fcntl.h>
 #include <stdio.h>
 
 #include "udp_request.hpp"
@@ -42,6 +43,22 @@ UDPRequest::UDPRequest( const char *host, int port, int localPort ) : sendAttemp
 			fprintf( stderr, "bind() error: %s\n", strerror( errno ) );
 			return;
 		}
+	}
+
+	// Set socket to be non-blocking
+#ifdef WIN32
+	unsigned long modeNonBlock = 1;
+	if (ioctlsocket(sockFD, FIONBIO, &modeNonBlock) != NO_ERROR)
+	{
+		closesocket( sockFD );
+#else
+	int modeNonBlock = O_NONBLOCK;
+	if (fcntl(socket_,F_SETFL,val) < 0) {
+	//if(ioctl( sockFD, FIONBIO, (char *)&on ) < 0) {
+		close( sockFD );
+#endif
+		fprintf( stderr, "Could not set non-blocking mode\n" );
+		return;
 	}
 
 	// Connect UDP socket
@@ -82,4 +99,23 @@ bool UDPRequest::send( unsigned int req_id, char *data, size_t len )
 		return false;
 	}
 	return true;
+}
+
+bool UDPRequest::recv( unsigned int  *req_id, char *data, size_t *len )
+{
+
+}
+
+/*
+Check any changes on request status. I.e. responce is ready, or request is timed out
+*/
+void UDPRequest::update()
+{
+	// Try to read socket if any response are there
+	// TODO
+	// Check if there are timed out requests
+	for (int i = 0; i < MAX_REQUEST_COUNT; i++)
+	{
+
+	}
 }

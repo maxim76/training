@@ -9,9 +9,6 @@ project (network)
 # Build result will be written to
 set(EXECUTABLE_OUTPUT_PATH "../../bins/network/windows")
 
-# Define additional library directories
-link_directories( BEFORE third_party/sqlite )
-
 # Define projects/executables
 add_executable(test_udp_request test_udp_request.cpp udp_request.cpp)
 

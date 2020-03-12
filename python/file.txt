@@ -1,0 +1,7 @@
+Write to head
+t 1
+Test file optput 2
+Test file optput 3
+Test file optput 4
+Test file optput 5
+Write to tail

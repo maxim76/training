@@ -1,0 +1,6 @@
+Installing SQLAlchemy
+
+1. Download SQLAlchemy from https://pypi.python.org/pypi/SQLAlchemy/1.0.14 and extract it
+	Inside archive find 'setup.py'
+2. Install SQLAlchemy using:
+	>python setup.py install

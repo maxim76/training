@@ -1,0 +1,5 @@
+Start web_server.py
+Open in browser "localhost"
+Enter name in the form and press "Submit". Web-server will process request using external py script from cgi-bin directory
+
+Alternatively, run "Test.py" instead of browser to make webserver request the cgi-bin script directly (using supplied name parameter and passing it to script)

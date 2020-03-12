@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<root>
+	<direct>
+		<!--
+			policy rules how machine is allocated/deallocated
+			Distribute - spread load evenly across all available machines
+			Concentrate - use as less machines as possible
+			Both policies will minimize cumulative cost of allocated machines
+		-->
+		<policy>
+			Distribute
+		</policy>
+		<machineList>
+			<machine hostname="maximk-c7">
+				<nCore>2</nCore>
+				<cost>10</cost>
+			</machine>
+			<machine hostname="c7cls01">
+				<nCore>8</nCore>
+				<cost>10</cost>
+			</machine>
+			<machine hostname="c7cls02">
+				<nCore>8</nCore>
+				<cost>10</cost>
+			</machine>
+			<machine hostname="c7cls03">
+				<nCore>8</nCore>
+				<cost>10</cost>
+			</machine>
+		</machineList>
+	</direct>
+</root>

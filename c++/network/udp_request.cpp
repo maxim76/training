@@ -68,13 +68,15 @@ UDPRequest::UDPRequest( const char *host, int port, int localPort ) :
 	// Connect UDP socket
 	if(connect( sockFD, (struct sockaddr *)&serverAddr, sizeof( struct sockaddr_in ) ) == -1)
 	{
-		fprintf( stderr, "connect() error: %s", strerror( errno ) );
+		fprintf( stderr, "connect() error: %s\n", strerror( errno ) );
 		return;
 	}
 
 	// Create request array
 	requests = new Request[MAX_REQUEST_COUNT];
 	memset( requests, 0, sizeof( Request )*MAX_REQUEST_COUNT );
+
+	ready_ = true;
 }
 
 UDPRequest::~UDPRequest()
@@ -84,6 +86,7 @@ UDPRequest::~UDPRequest()
 
 bool UDPRequest::send( TReqID req_id, char *data, size_t len )
 {
+	if(!ready_) return false;
 	assert( len + sizeof( TReqID ) < MAX_DATAGRAM_SIZE );
 	assert( req_id < MAX_REQUEST_COUNT );
 	if(requests[req_id].isActive)
@@ -101,6 +104,7 @@ bool UDPRequest::send( TReqID req_id, char *data, size_t len )
 bool UDPRequest::send( TReqID req_id )
 {
 	requests[req_id].deadline = time( NULL ) + sendTimeout;
+	requests[req_id].attemptNum++;
 	int sentBytes = ::send( sockFD, requests[req_id].data, requests[req_id].len, 0 );
 	if(sentBytes < 0)
 	{
@@ -148,6 +152,7 @@ void UDPRequest::update()
 
 bool UDPRequest::recv( TReqID *req_id, bool *isTimeout, char *data, size_t *len )
 {
+	if(!ready_) return false;
 	if(!socketProcessed)
 	{
 		if(tryReceiveFromSocket( req_id, data, len ))
@@ -172,12 +177,13 @@ bool UDPRequest::recv( TReqID *req_id, bool *isTimeout, char *data, size_t *len 
 				if(requests[currentReqIndex].attemptNum < sendAttempts)
 				{
 					// Timeout. Resend packet
-					requests[currentReqIndex].attemptNum++;
+					printf( "Timeout. Resend\n" );
 					send( currentReqIndex );
 				}
 				else
 				{
 					// Timout and all resend attempt already used
+					printf( "Timeout. Final attempt failed\n" );
 					requests[currentReqIndex].isActive = false;
 					*req_id = currentReqIndex;
 					*isTimeout = true;

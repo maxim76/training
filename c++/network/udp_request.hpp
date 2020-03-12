@@ -24,12 +24,12 @@ public:
 	bool send( TReqID req_id, char *data, size_t len);
 	void update();
 	bool recv( TReqID *req_id, bool *isTimeout, char *data, size_t *len );
+	bool ready() { return ready_; }
 
 private:
 	bool send( TReqID req_id );
 	bool tryReceiveFromSocket( TReqID *req_id, char *data, size_t *len);
 
-	//processRequest( unsigned int  req_id );
 	int sockFD;
 	int sendAttempts;
 	int sendTimeout;
@@ -37,4 +37,5 @@ private:
 
 	bool socketProcessed = false;	// Flag shows if socket events was already processed since the last update
 	TReqID currentReqIndex = 0;		// index of Request item array that is next to be processed in the current update cycle
+	bool ready_ = false;			// Flag shows if initialization successfully completed 
 };

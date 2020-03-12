@@ -36,10 +36,52 @@ int main( int argc, char *argv[] )
 #endif
 
 	UDPRequest request( argv[1], serverPort );
-	char data[] = {"Hello"};
-	request.send(1, data, 5);
+	if(!request.ready())
+	{
+		fprintf( stderr, "UDPRequest initialization failed\n" );
+		return -1;
+	}
+	char data[] = { "Hello" };
 
-	while(true)
+	// Test 1. Single request
+	{
+		request.send( 1, data, 5 );
+
+		while(true)
+		{
+			request.update();
+			bool isTimeout;
+			unsigned int req_id;
+			char data[MAX_DATAGRAM_SIZE];
+			size_t len;
+
+			if(request.recv( &req_id, &isTimeout, data, &len ))
+			{
+				if(isTimeout)
+				{
+					printf( "[%u] Timeout\n", req_id );
+				}
+				else
+				{
+					printf( "[%u] Received %d bytes\n", req_id, len );
+				}
+				break;
+			}
+#ifdef WIN32
+			Sleep( 10 );
+#else
+			usleep( 10 * 1000 );
+#endif
+		}
+	}
+	/*
+	// Test 2. Batch of requests
+	int batchSize = 10;
+	for(int i=0; i<batchSize; i++)
+		request.send( i, data, 5 );
+	int respCnt = 0;
+
+	while(respCnt < batchSize)
 	{
 		request.update();
 		bool isTimeout;
@@ -51,18 +93,20 @@ int main( int argc, char *argv[] )
 		{
 			if(isTimeout)
 			{
-				printf("[%u] Timeout\n", req_id);
+				printf( "[%u] Timeout\n", req_id );
 			}
 			else
 			{
 				printf( "[%u] Received %d bytes\n", req_id, len );
 			}
 			break;
+			++respCnt;
 		}
 #ifdef WIN32
 		Sleep( 10 );
 #else
-		usleep(10*1000);
+		usleep( 10 * 1000 );
 #endif
 	}
+	*/
 }

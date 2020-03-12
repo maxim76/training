@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #endif
 
 #include <assert.h>
@@ -19,7 +21,9 @@
 
 #include "udp_request.hpp"
 
-UDPRequest::UDPRequest( const char *host, int port, int localPort ) : sendAttempts{ DEFAULT_SEND_ATTEMPTS }, sendTimeout{ DEFAULT_SEND_TIMEOUT }
+UDPRequest::UDPRequest( const char *host, int port, int localPort ) : 
+	sendAttempts{ DEFAULT_SEND_ATTEMPTS }, 
+	sendTimeout{ DEFAULT_SEND_TIMEOUT }
 {
 	// Create connected UDP socket
 	struct sockaddr_in serverAddr;
@@ -53,7 +57,7 @@ UDPRequest::UDPRequest( const char *host, int port, int localPort ) : sendAttemp
 		closesocket( sockFD );
 #else
 	int modeNonBlock = O_NONBLOCK;
-	if (fcntl(socket_,F_SETFL,val) < 0) {
+	if (fcntl(sockFD,F_SETFL, modeNonBlock) < 0) {
 	//if(ioctl( sockFD, FIONBIO, (char *)&on ) < 0) {
 		close( sockFD );
 #endif
@@ -78,9 +82,9 @@ UDPRequest::~UDPRequest()
 	delete [] requests;
 }
 
-bool UDPRequest::send( unsigned int req_id, char *data, size_t len )
+bool UDPRequest::send( TReqID req_id, char *data, size_t len )
 {
-	assert( len < 1500 );
+	assert( len + sizeof( TReqID ) < MAX_DATAGRAM_SIZE );
 	assert( req_id < MAX_REQUEST_COUNT );
 	if(requests[req_id].isActive)
 	{
@@ -90,10 +94,15 @@ bool UDPRequest::send( unsigned int req_id, char *data, size_t len )
 	memcpy( requests[req_id].data, (char *)&req_id, sizeof( req_id ) );
 	memcpy( requests[req_id].data + sizeof( req_id ), data, len );
 	requests[req_id].len = len + sizeof( req_id );
-	requests[req_id].deadline = time( NULL ) + sendTimeout;
 	requests[req_id].attemptNum = 0;
+	return send( req_id );
+}
+
+bool UDPRequest::send( TReqID req_id )
+{
+	requests[req_id].deadline = time( NULL ) + sendTimeout;
 	int sentBytes = ::send( sockFD, requests[req_id].data, requests[req_id].len, 0 );
-	if (sentBytes < 0)
+	if(sentBytes < 0)
 	{
 		fprintf( stderr, "UDPRequest::send : send() error: %s\n", strerror( errno ) );
 		return false;
@@ -101,9 +110,31 @@ bool UDPRequest::send( unsigned int req_id, char *data, size_t len )
 	return true;
 }
 
-bool UDPRequest::recv( unsigned int  *req_id, char *data, size_t *len )
+bool UDPRequest::tryReceiveFromSocket( TReqID *req_id, char *data, size_t *len )
 {
+	char buffer[MAX_DATAGRAM_SIZE];
+	int recvBytes = ::recv( sockFD, buffer, MAX_DATAGRAM_SIZE, 0 );
+	//printf("UDPRequest::tryReceiveFromSocket : recvBytes = %d\n", recvBytes );
+	if(recvBytes < 0) return false;
+	if(recvBytes < sizeof( TReqID ))
+	{
+		fprintf( stderr, "UDPRequest::recv : received buffer is too short, %d bytes\n", recvBytes );
+		return false;
+	}
+	TReqID * reqPtr = (TReqID *)buffer;
+	*req_id = *reqPtr;
 
+	if(*req_id < MAX_REQUEST_COUNT)
+	{
+		memcpy( data, &(buffer[sizeof( TReqID )]), recvBytes );
+		*len = recvBytes - sizeof( TReqID );
+		return true;
+	}
+	else
+	{
+		fprintf( stderr, "UDPRequest::recv : unexpected req_id %lu\n", *req_id );
+		return false;
+	}
 }
 
 /*
@@ -111,11 +142,52 @@ Check any changes on request status. I.e. responce is ready, or request is timed
 */
 void UDPRequest::update()
 {
-	// Try to read socket if any response are there
-	// TODO
-	// Check if there are timed out requests
-	for (int i = 0; i < MAX_REQUEST_COUNT; i++)
-	{
+	socketProcessed = false;
+	currentReqIndex = 0;
+}
 
+bool UDPRequest::recv( TReqID *req_id, bool *isTimeout, char *data, size_t *len )
+{
+	if(!socketProcessed)
+	{
+		if(tryReceiveFromSocket( req_id, data, len ))
+		{
+			requests[*req_id].isActive = false;
+			*isTimeout = false;
+			return true;
+		}
+		else
+		{
+			socketProcessed = true;
+		}
 	}
+
+	// No more data available in socket, check if amy timeout occured
+	while(currentReqIndex < MAX_REQUEST_COUNT)
+	{
+		if(requests[currentReqIndex].isActive)
+		{
+			if(requests[currentReqIndex].deadline < time( NULL ))
+			{
+				if(requests[currentReqIndex].attemptNum < sendAttempts)
+				{
+					// Timeout. Resend packet
+					requests[currentReqIndex].attemptNum++;
+					send( currentReqIndex );
+				}
+				else
+				{
+					// Timout and all resend attempt already used
+					requests[currentReqIndex].isActive = false;
+					*req_id = currentReqIndex;
+					*isTimeout = true;
+					return true;
+				}
+			}
+		}
+		++currentReqIndex;
+	}
+
+	// No events, neither receive from socket nor timeouts
+	return false;
 }

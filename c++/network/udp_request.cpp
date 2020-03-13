@@ -92,6 +92,7 @@ bool UDPRequest::send( TReqID req_id, char *data, size_t len )
 	if(requests[req_id].isActive)
 	{
 		fprintf( stderr, "UDPRequest::send : req_id=%u. There is already active request\n", req_id );
+		return false;
 	}
 	requests[req_id].isActive = 1;
 	memcpy( requests[req_id].data, (char *)&req_id, sizeof( req_id ) );

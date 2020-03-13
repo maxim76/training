@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 
 #ifdef WIN32
@@ -74,7 +75,7 @@ int main( int argc, char *argv[] )
 #endif
 		}
 	}
-	/*
+	
 	// Test 2. Batch of requests
 	int batchSize = 10;
 	for(int i=0; i<batchSize; i++)
@@ -99,7 +100,6 @@ int main( int argc, char *argv[] )
 			{
 				printf( "[%u] Received %d bytes\n", req_id, len );
 			}
-			break;
 			++respCnt;
 		}
 #ifdef WIN32
@@ -108,5 +108,14 @@ int main( int argc, char *argv[] )
 		usleep( 10 * 1000 );
 #endif
 	}
-	*/
+	
+	// Test 3. Attempt to send request when previous request is in progress
+	bool result;
+	printf("Sending first request, it expected to be sent successfully\n");
+	result = request.send( 0, data, 5 );
+	assert( result == true );
+
+	printf("Sending second request, it expected to fail\n");
+	result = request.send( 0, data, 5 );
+	assert( result == false );
 }

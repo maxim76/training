@@ -20,4 +20,4 @@ while True:
     
     if data:
         sent = sock.sendto(data, address)
-        print('Rent %s bytes back to %s' % (sent, address))
+        print('Sent %s bytes back to %s' % (sent, address))

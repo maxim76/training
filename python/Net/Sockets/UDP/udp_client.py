@@ -9,7 +9,7 @@ if len(sys.argv) != 3:
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 server_address = (sys.argv[1], int(sys.argv[2]))
-message = 'This is the message.  It will be repeated.'
+message = bytes('Test message', 'utf-8')
 
 try:
 

@@ -1,5 +1,9 @@
 """
-https://docs.python.org/3/library/socketserver.html
+UDP Server, based on socketserver.UDPServer class
+Example from https://docs.python.org/3/library/socketserver.html
+
+Single thread blocking server, can serve only 1 connection at a time.
+Echoes back received messages
 """
 import socketserver
 import sys
@@ -21,11 +25,11 @@ class MyUDPHandler(socketserver.BaseRequestHandler):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print('Usage: udpserver.py localIP localPort')
+        print('Usage: udp_socket_server.py localIP localPort')
         exit()
 
     server_address = (sys.argv[1], int(sys.argv[2]))
-    print('Starting UDP server on %s port %s' % server_address)
+    print('Starting socketserver based UDP server on %s port %s' % server_address)
 
     with socketserver.UDPServer(server_address, MyUDPHandler) as server:
         server.serve_forever()

@@ -1,3 +1,10 @@
+"""
+UDP Server, based on the lowest level of API - sockets
+
+
+Single thread blocking server, can serve only 1 request at a time.
+Echoes back received messages
+"""
 import socket
 import sys
 
@@ -10,7 +17,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Bind the socket to the port
 server_address = (sys.argv[1], int(sys.argv[2]))
-print('Starting UDP server on %s port %s' % server_address)
+print('Starting socket based UDP server on %s port %s' % server_address)
 sock.bind(server_address)
 
 while True:

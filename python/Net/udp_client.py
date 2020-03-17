@@ -1,21 +1,24 @@
 import socket
 import sys
 
-if len(sys.argv) != 3:
-    print('Usage: udpserver.py serverIP serverPort')
+if len(sys.argv) < 3:
+    print('Usage: udp_client.py host port [message]')
     exit()
+
+server_address = (sys.argv[1], int(sys.argv[2]))
+if len(sys.argv) > 3:
+    data = sys.argv[3]
+else:
+    data = "Test message"
 
 # Create UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-server_address = (sys.argv[1], int(sys.argv[2]))
-message = bytes('Test message', 'utf-8')
-
 try:
 
     # Send data
-    print( 'Sending "%s"' % message )
-    sent = sock.sendto(message, server_address)
+    print( 'Sending "%s"' % data )
+    sent = sock.sendto(bytes(data + "\n", "utf-8"), server_address)
 
     # Receive response
     data, server = sock.recvfrom(4096)

@@ -3,6 +3,7 @@ UDP Server, based on the lowest level of API - sockets
 
 
 Single thread blocking server, can serve only 1 request at a time.
+Process requests synchronously; each request must be completed before the next request can be started.
 Echoes back received messages
 """
 import socket

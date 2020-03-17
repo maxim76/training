@@ -3,6 +3,7 @@ TCP Server, based on socketserver.TCPServer class
 Example from https://docs.python.org/3/library/socketserver.html
 
 Single thread blocking server, can serve only 1 connection at a time.
+Process requests synchronously; each request must be completed before the next request can be started.
 Echoes back received messages
 """
 import socketserver

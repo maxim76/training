@@ -1,8 +1,8 @@
 """
 Example demostrates usage of Oracle session pool.
 
-cx_Oracle’s connection pooling lets applications create and maintain a pool of connections to the database. 
-The internal implementation uses Oracle’s session pool technology. 
+cx_Oracle's connection pooling lets applications create and maintain a pool of connections to the database.
+The internal implementation uses Oracle's session pool technology.
 In general, each connection in a cx_Oracle connection pool corresponds to one Oracle session.
 
 A connection pool is created by calling SessionPool()

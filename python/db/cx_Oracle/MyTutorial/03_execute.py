@@ -9,5 +9,5 @@ cursor = connection.cursor()
 cursor.execute('select sysdate from dual')
 
 for row in cursor:
-    print(row)
+    print(row[0])
 

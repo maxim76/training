@@ -5,7 +5,7 @@
 * Get access to Oracle database
 * Create PS package in Oracle database (package source are provided at...)
 * Install Oracle client
-* Install cx_OracleSee
+* Install cx_Oracle (See [1])
 py -3 -m pip install cx_oracle
 
 

@@ -10,9 +10,9 @@ dictLogConfig = {
                 "class":"logging.handlers.TimedRotatingFileHandler",
                 "level":"DEBUG",
                 "formatter":"logFormatter",
-                "filename":"/rotatingLog",
+                "filename":"rotatingLog",
                 "when":"S",
-                "interval":10
+                "interval":5
             },
             "consoleHandler":{
                 "class":"logging.StreamHandler",
@@ -49,7 +49,7 @@ consoleHandler.setFormatter(formatter)
 logger.addHandler(consoleHandler)
 
 # Configure file log handler (with rotation)
-fileHandler = logging.handlers.TimedRotatingFileHandler("rotatingLog.log", when="S", interval=10)
+fileHandler = logging.handlers.TimedRotatingFileHandler("rotatingLog.log", when="S", interval=5)
 fileHandler.setLevel('DEBUG')
 fileHandler.setFormatter(formatter)
 fileHandler.suffix = "%Y.%m.%d_%H-%M-%S.log"

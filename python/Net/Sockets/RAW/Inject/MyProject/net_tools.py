@@ -1,5 +1,7 @@
 """This helper module provides capabilities to inject 
 TCP/UDP/ICMP packets into network
+
+Functions defined here require *ROOT* privileges
 """
 
 import socket
@@ -7,52 +9,95 @@ import struct
 import random
 import sys
 import binascii
+import re
+
 
 # The checksum function:
 def checkSum( data ):
-    s = 0
-    n = len(data) % 2
-    for i in range(0, len(data)-n, 2):
-        s+= ord(data[i]) + (ord(data[i+1]) << 8)
-    if n:
-        s+= ord(data[i+1])
-    while (s >> 16):
-        s = (s & 0xFFFF) + (s >> 16)
-    s = ~s & 0xffff
-    return s
+	"""
+	Calculates internet checksum
 
-class IP( object ):
+	@param data: data to be used for checksum calculation, passed as a bytearray
+	"""
+	s = 0
+	n = len( data ) % 2
+	for i in range( 0, len( data )-n, 2 ):
+		s+= data[i] + (data[i+1] << 8)
+	if n:
+		s+= data[i+1]
+	while ( s >> 16 ):
+		s = ( s & 0xFFFF ) + ( s >> 16 )
+	s = ~s & 0xffff
+	return s
+
+def splitAddress( address ):
+	"""
+	Splits address from 'IP:port' string to separate IP and port
+	@param address: Source address in form 'IP:port'
+	@return host, port
+	"""
+	host = re.split( ':', address )[0]
+	port = int( re.split( ':', address )[1] )
+	return host, port
+
+class AbstractL4Packet( object) :
+	"""Creates L4 packet"""
+	def __init__( self, srcAddress, dstAddress ):
+		"""
+		Default root constructor for all L4 protocols
+
+		@param srcAddress: Source address in form 'IP:port'
+		@param dstAddress: Destination address in form 'IP:port'
+		"""
+		self.srcHost, self.srcPort = splitAddress( srcAddress )
+		self.dstHost, self.dstPort = splitAddress( dstAddress )
+
+	def createIPPacket( self ):
+		"""
+		Virtual, must be overriden
+		"""
+		pass
+
+	def inject( self ):
+		"""Injects IP packet into network"""
+		self.createIPPacket().inject( self.dstPort )
+
+class IPPacket( object ):
 	""" Implements IP layer encapsulation """
-	def __init__( self, srcIP, dstIP, proto=socket.IPPROTO_TCP, totalLen=0 ):
+
+	def __init__( self, srcHost, dstHost, proto, payload ):
 		"""
 		Initialises IP packet
 
-		@param srcIP: Source host IP address
-		@param dstIP: Destination host IP address
-		@param proto: upper layer protocol (default is TCP)
-		@param totalLen: length of payload data to be included into IP packet
+		@param srcHost: Source host IP address
+		@param dstHost: Destination host IP address
+		@param proto: upper layer protocol
+		@param payload: payload data to be included into IP packet
 		"""
 		self.version = 4
-		self.ihl = 5			# Internet Header Length
-		self.tos = 0			# Type of Service
-		self.tl = 20 + totalLen	# total length also can be filled by kernel
+		self.ihl = 5					# Internet Header Length
+		self.tos = 0					# Type of Service
+		self.tl = 20 + len( payload )	# total len also can be filled by kernel
 		self.id = random.randint( 0, 65535 )
 		self.flags = 0
 		self.offset = 0
 		self.ttl = 255
 		self.protocol = proto
 		self.checkSum = 0 # will be filled by kernel
-		self.srcIP = socket.inet_aton( srcIP )
-		self.dstIP = socket.inet_aton( dstIP )
-	def pack( self ):
-		"""
-		Formats IP packet in a byte-order suitable for sending to socket
+		self.srcHost = srcHost
+		self.dstHost = dstHost
+		self.payload = payload
+		print("IPPacket::IPPacket : passed IP payload %s" % ( ' '.join('%02X' % ch for ch in payload)))
 
-		@return formatted packet as a Python string
+	def packHeader( self ):
+		"""
+		Formats IP header in a byte-order suitable for sending to socket
+
+		@return formatted header as a Python string
 		"""
 		ver_ihl = ( self.version << 4 ) + self.ihl
 		flags_offset = ( self.flags << 13 ) + self.offset
-		ip_header = struct.pack( "!BBHHHBBH4s4s",
+		hdrIP = struct.pack( "!BBHHHBBH4s4s",
 			ver_ihl,
 			self.tos,
 			self.tl,
@@ -61,21 +106,43 @@ class IP( object ):
 			self.ttl,
 			self.protocol,
 			self.checkSum,
-			self.srcIP,
-			self.dstIP )
-		return ip_header
+			socket.inet_aton( self.srcHost ),
+			socket.inet_aton( self.dstHost ) )
+		return hdrIP
 
-class TCP( object ):
-	""" Implenets TCP protocol encapsulation """
-	def __init__( self, srcPort, dstPort ):
+	def pack( self ):
+		""" 
+		Formats IP packet in a byte-order suitable for sending to socket
+
+		@return formatted IP packet as a Python string
+		"""
+		return self.packHeader() + self.payload
+	
+	def inject( self, dstPort ):
+		"""
+		Injects IP packet into network
+
+		@param dstPort: Destination Port
+		"""
+		data = self.pack()
+		print("IPPacket::inject: %s" % ( ' '.join('%02X' % ch for ch in data)))
+		s = socket.socket( socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW )
+		s.sendto( data, ( self.dstHost, dstPort ) )
+
+
+class TCPPacket( AbstractL4Packet ):
+	""" Implemets TCP protocol encapsulation """
+
+	def __init__( self, srcAddress, dstAddress, payload ):
 		"""
 		Initialises TCP segment
 
-		@param srcPort: Source port
-		@param dstPort: Destination port
+		@param srcAddress: Source address in form 'IP:port'
+		@param dstAddress: Destination address in form 'IP:port'
+		@param payload:    payload data to be included into TCP segment
 		"""
-		self.srcPort = srcPort
-		self.dstPort = dstPort
+		super( TCPPacket, self ).__init__( srcAddress, dstAddress )
+		self.payload  = payload
 		self.seqn = 0
 		self.ackn = 0
 		self.offset = 5 # Data offset: 5x4 = 20 bytes
@@ -86,24 +153,21 @@ class TCP( object ):
 		self.rst = 0
 		self.syn = 0
 		self.fin = 0
-		self.window = socket.htons(5840)
+		self.window = socket.htons( 5840 )
 		self.checkSum = 0
 		self.urgp = 0
-	def pack( self, srcIP, dstIP, payload ):	# input param are for checksum
-		"""
-		Formats TCP segment in a byte-order suitable for sending to socket
 
-		@param srcIP: Source host IP address (used for checksum calculation)
-		@param dstIP: Destination host IP address (used for checksum calculation)
-		@param payload: upper layer data (used for checksum calculation)
-
-		@return formatted packet as a Python string
+	def packHeader( self ):	# input param are for checksum
 		"""
-		data_offset = (self.offset << 4) + 0
-		flags = self.fin + (self.syn << 1) + (self.rst << 2) + (self.psh << 3) \
-			+ (self.ack << 4) + (self.urg << 5)
+		Formats TCP header in a byte-order suitable for sending to socket
+
+		@return formatted header as a Python string
+		"""
+		data_offset = ( self.offset << 4 ) + 0
+		flags = self.fin + ( self.syn << 1 ) + ( self.rst << 2 ) \
+			+ ( self.psh << 3 ) + (self.ack << 4) + (self.urg << 5)
 		# Pack TCP header with zeroed checksum
-		tcpHdr = struct.pack('!HHLLBBHHH',
+		tcpHdr = struct.pack( '!HHLLBBHHH',
 			self.srcPort,
 			self.dstPort,
 			self.seqn,
@@ -112,173 +176,200 @@ class TCP( object ):
 			flags, 
 			self.window,
 			self.checkSum,
-			self.urgp)
+			self.urgp )
 		# Create pseudo header for checksum calculation
 		pseudoHdr = struct.pack( "!4s4sBBH",
-			socket.inet_aton(srcIP),
-			socket.inet_aton(dstIP),
+			socket.inet_aton( self.srcHost ),
+			socket.inet_aton( self.dstHost ),
 			0,					# reserved
 			socket.IPPROTO_TCP, # protocol
-			len( tcpHdr ) + len( payload ) )
+			len( tcpHdr ) + len( self.payload ) )
 		pseudoHdr = pseudoHdr + tcpHdr
-		tcpChecksum = checkSum( pseudoHdr + str( payload ) )
+		tcpChecksum = checkSum( pseudoHdr + self.payload )
 		# Repack TCP header with correct checksum
-		tcpHdr = struct.pack("!HHLLBBH",
+		tcpHdr = struct.pack( "!HHLLBBH",
 			self.srcPort,
 			self.dstPort,
 			self.seqn,
 			self.ackn,
 			data_offset,
 			flags,
-			self.window) + \
-			struct.pack('<H', tcpChecksum) + \
-			struct.pack('!H', self.urgp)
+			self.window ) + \
+			struct.pack( '<H', tcpChecksum ) + \
+			struct.pack( '!H', self.urgp )
 		return tcpHdr
 
-class UDP( object ):
-	""" Implenets UDP protocol encapsulation """
-	def __init__( self, srcPort, dstPort ):
+	def createIPPacket( self ):
+		"""
+		Creates IP Packet with TCP payload defined by current object
+
+		@return IPPacket object
+		"""
+		payloadIP = self.packHeader() + self.payload
+		return IPPacket( self.srcHost, self.dstHost, socket.IPPROTO_TCP, payloadIP )
+
+
+class UDPPacket( AbstractL4Packet ):
+	""" Implemets UDP protocol encapsulation """
+
+	def __init__( self, srcAddress, dstAddress, payload ):
 		"""
 		Initialises UDP segment
 
-		@param srcPort: Source port
-		@param dstPort: Destination port
+		@param srcAddress: Source address in form 'IP:port'
+		@param dstAddress: Destination address in form 'IP:port'
+		@param payload:    payload data to be included into UDP segment
 		"""
-		self.srcPort  = srcPort
-		self.dstPort  = dstPort
-	def pack( self, srcIP, dstIP, payload ):	# input param are for checksum
-		"""
-		Formats UDP segment in a byte-order suitable for sending to socket
+		super( UDPPacket, self ).__init__( srcAddress, dstAddress )
+		self.payload  = payload
+		print("UDPPacket : f %s:%d to %s:%d" % (self.srcHost, self.srcPort, self.dstHost, self.dstPort))
 
-		@param srcIP: Source host IP address (used for checksum calculation)
-		@param dstIP: Destination host IP address (used for checksum calculation)
-		@param payload: upper layer data (used for checksum calculation)
-
-		@return formatted packet as a Python string
+	def packHeader( self ):
 		"""
-		totalLen = 8 + len( payload )
+		Formats UDP header in a byte-order suitable for sending to socket
+
+		@return formatted header as a Python string
+		"""
+		totalLen = 8 + len( self.payload )
 		# Pack UDP header with zeroed checksum
 		udpChecksum = 0
 		udpHdr = struct.pack( '!HHHH',
 			self.srcPort, self.dstPort, totalLen, udpChecksum )
 		# Create pseudo header for checksum calculation
 		pseudoHdr = struct.pack( "!4s4sBBH",
-			socket.inet_aton(srcIP),
-			socket.inet_aton(dstIP),
+			socket.inet_aton( self.srcHost ),
+			socket.inet_aton( self.dstHost ),
 			0,					# reserved
 			socket.IPPROTO_UDP, # protocol
-			len( udpHdr ) + len( payload ) )
+			len( udpHdr ) + len( self.payload ) )
 		pseudoHdr = pseudoHdr + udpHdr
-		udpChecksum = checkSum( pseudoHdr + str( payload ) )
+
+		udpChecksum = checkSum( pseudoHdr + self.payload )
 		# Pack UDP header with correct checksum
 		udpHdr = struct.pack( '!HHH', self.srcPort, self.dstPort, totalLen ) + \
-			struct.pack('<H', udpChecksum)
+			struct.pack( '<H', udpChecksum )
 		return udpHdr
 
-class ICMP( object ):
-	""" Implenets ICMP protocol encapsulation """
-	def __init__( self, icmp_type, icmp_code ):
+	def createIPPacket( self ):
+		"""
+		Creates IP Packet with UDP payload defined by current object
+
+		@return IPPacket object
+		"""
+		payloadIP = self.packHeader() + self.payload
+		print("UDPPacket::createIPPacket: %s" % ( ' '.join('%02X' % ch for ch in payloadIP)))
+		return IPPacket( self.srcHost, self.dstHost, socket.IPPROTO_UDP, payloadIP )
+
+
+class ICMPPacket( AbstractL4Packet ):
+	""" Implemets ICMP protocol encapsulation """
+
+	# List of ICMP types
+	ICMPTYPE_ECHO_REPLY		= 0
+	ICMPTYPE_DEST_UNREACH 	= 3
+	ICMPTYPE_SRC_QUENCH		= 4
+	ICMPTYPE_REDIR_MSG		= 5
+	ICMPTYPE_ECHO_REQUEST 	= 8
+	ICMPTYPE_ROUTER_ADVT 	= 9
+	ICMPTYPE_ROUTER_SOLIC 	= 10
+	ICMPTYPE_TIME_EXCEED 	= 11
+	ICMPTYPE_TRACEROUTE 	= 30
+
+	# List of ICMP codes
+	DEST_NET_UNREACH		= 0
+	DEST_HOST_UNREACH		= 1
+	DEST_PROT_UNREACH		= 2
+	DEST_PORT_UNREACH		= 3
+	FRAG_REQUIRED			= 4
+	SRC_ROUTE_FAILED		= 5
+	DEST_NET_UNKNOWN		= 6
+	DST_HOST_UNKNOWN		= 7
+	SRC_HOST_ISOLATED		= 8
+	NET_ADM_PROHIBITED		= 9
+	HOST_ADM_PROHIBITED		= 10
+	NET_UNREACHABLE_TOS		= 11
+	HOST_UNREACHABLE_TOS	= 12
+	COM_ADM_PROHIBITED		= 13
+	HOST_PRECEDENCE_VIOL	= 14	
+	PRECEDENCE_CUTOFF		= 15
+
+	def __init__( self, srcAddress, dstAddress, icmpType, icmpCode, payload ):
 		"""
 		Initialises ICMP packet
-		"""
-		self.icmp_type = icmp_type
-		self.icmp_code = icmp_code
-	def pack( self, payload = '' ):
-		"""
-		Formats ICMP packet in a byte-order suitable for sending to socket
 
-		@param payload: upper layer data (used for checksum calculation)
+		@param srcAddress: Source address in form 'IP:port'
+		@param dstAddress: Destination address in form 'IP:port'
+		@param icmpType: Type of message. 
+		@param icmpCode: Code of message. 
+		@param payload:    payload data to be included into UDP segment
+		"""
+		super( ICMPPacket, self ).__init__( srcAddress, dstAddress )
+		self.payload  = payload
+		self.icmpType = icmpType
+		self.icmpCode = icmpCode
 
-		@return formatted packet as a Python string
+	def packHeader( self ):
+		"""
+		Formats ICMP header in a byte-order suitable for sending to socket
+
+		@return formatted header as a Python string
 		"""
 		# Create pseudo header for checksum calculation
-		pseudoHdr = struct.pack( '!BBHL', self.icmp_type, self.icmp_code, 0, 0 )
-		icmpChecksum = checkSum( pseudoHdr + str( payload ) )
+		pseudoHdr = struct.pack( '!BBHL', self.icmpType, self.icmpCode, 0, 0 )
+		icmpChecksum = checkSum( pseudoHdr + self.payloadICMP )
 		# Pack ICMP header with correct checksum
-		icmpHdr = struct.pack( '!BB', self.icmp_type, self.icmp_code ) + \
+		icmpHdr = struct.pack( '!BB', self.icmpType, self.icmpCode ) + \
 			struct.pack( '<HL', icmpChecksum, 0 )	# checksum is little endian
 		return icmpHdr
 
-class NetInject( object ):
+	def createIPPacket( self ):
+		"""
+		Creates IP Packet with ICMP payload defined by current object
+
+		@return IPPacket object
+		"""
+		pktIncUDP = UDPPacket( 
+			self.dstHost + ":" + str( self.dstPort ), 
+			self.srcHost+":"+str( self.srcPort ), 
+			self.payload )
+
+		self.payloadICMP = pktIncUDP.createIPPacket().pack()
+		payloadIP = self.packHeader() + self.payloadICMP
+		return IPPacket( self.srcHost, self.dstHost, socket.IPPROTO_ICMP, payloadIP )
+
+
+"""
+Wrappers that run net functions without explicit object creation
+"""
+
+def injectUDP( srcAddress, dstAddress, data ):
 	"""
-	Implements facility of artificial packets injection into network
+	Build and inject UDP packet into network.
+
+	@param srcAddress: Source address in form 'IP:port'
+	@param dstAddress: Destination address in form 'IP:port'
+	@param data: L5-L5 payload
 	"""
-	def injectICMP( self, srcIP, srcPort, dstIP, dstPort, icmpType, icmpCode, data ):
-		"""
-		Build and inject ICMP packet into network.
-		Note: host addresses and ports should be filled from point of view of 
-		imagined original packet, that would be answered with ICMP notification
-		I.e. source and destination should be swapped.
-		Example: if ICMP is required to notify 10.1.1.1 that 10.2.2.2 is 
-		unavailable, then srcIP set to 10.1.1.1 and dstIP set to 10.2.2.2
+	UDPPacket( srcAddress, dstAddress, bytearray.fromhex( data ) ).inject()
 
-		@param srcIP: Source host IP address (see comment above)
-		@param dstIP: Destination host IP address (see comment above)
-		@param srcPort: Source port (see comment above)
-		@param dstPort: Destination port (see comment above)
-		@param icmpType: Type of message. Example: 3 is for 'Destination unreachable'
-		@param icmpCode: Code of message. Example: 1 is for 'Destination host unreachable'
-		@param data: L5-L7 layer data, that would be sent in original packet
-		"""
-		s = socket.socket( socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW )
+def injectTCP( srcAddress, dstAddress, data ):
+	"""
+	Build and inject TCP packet into network.
 
-		payload = bytearray.fromhex( data )				# [data]
+	@param srcAddress: Source address in form 'IP:port'
+	@param dstAddress: Destination address in form 'IP:port'
+	@param data: L5-L5 payload
+	"""
+	TCPPacket(  srcAddress, dstAddress, bytearray.fromhex( data ) ).inject()
 
-		hdrIncludedUDP = UDP( srcPort, dstPort )
-		payload = hdrIncludedUDP.pack( srcIP, dstIP, payload) + payload#[UDP/data]
+def injectICMP( srcAddress, dstAddress, icmpType, icmpCode, data ):
+	"""
+	Build and inject ICMP packet into network.
 
-		hdrIncludedIP = IP( srcIP, dstIP, socket.IPPROTO_UDP, len( payload ) )
-		payload = hdrIncludedIP.pack() + payload		# [IP/UDP/data]
-
-		hdrICMP = ICMP( icmpType, icmpCode )
-		payload = hdrICMP.pack( payload ) + payload		# ICMP/[IP/UDP/data]
-
-		# swap src and dst for ICMP packet
-		hdrIP = IP( dstIP, srcIP, socket.IPPROTO_ICMP, len( payload ) )
-		payload = hdrIP.pack() + payload				# IP/ICMP/[IP/UDP/data]
-
-		s.sendto( payload, (srcIP, 0) )
-
-	def injectUDP( self, srcIP, srcPort, dstIP, dstPort, data ):
-		"""
-		Build and inject UDP packet into network.
-
-		@param srcIP: Source host IP address
-		@param dstIP: Destination host IP address
-		@param srcPort: Source port
-		@param dstPort: Destination port
-		@param data: L5-L5 payload
-		"""
-		s = socket.socket( socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW )
-
-		payload = bytearray.fromhex( data )						# [data]
-
-		hdrUDP = UDP( srcPort, dstPort )
-		payload = hdrUDP.pack( srcIP, dstIP, payload ) + payload# UDP/[data]
-
-		hdrIP = IP( srcIP, dstIP, socket.IPPROTO_UDP, len( payload ) )
-		payload = hdrIP.pack() + payload						# IP/UDP/[data]
-
-		s.sendto( payload, ( dstIP, dstPort ) )
-
-	def injectTCP( self, srcIP, srcPort, dstIP, dstPort, data ):
-		"""
-		Build and inject TCP packet into network.
-
-		@param srcIP: Source host IP address
-		@param dstIP: Destination host IP address
-		@param srcPort: Source port
-		@param dstPort: Destination port
-		@param data: L5-L5 payload
-		"""
-		s = socket.socket( socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW )
-
-		payload = bytearray.fromhex( data )						# [data]
-
-		hdrTCP = TCP( srcPort, dstPort )
-		payload = hdrTCP.pack( srcIP, dstIP, payload ) + payload# TCP/[data]
-
-		hdrIP = IP( srcIP, dstIP, socket.IPPROTO_TCP, len( payload ) )
-		payload = hdrIP.pack() + payload						# IP/TCP/[data]
-
-		s.sendto( payload, ( dstIP, dstPort ) )
+	@param srcAddress: Source address in form 'IP:port'
+	@param dstAddress: Destination address in form 'IP:port'
+	@param icmpType: Type of message. Ex.: 3 is for 'Destination unreachable'
+	@param icmpCode: Code of message. Ex.: 1 is for 'Destination host unreachable'
+	@param data: L5-L7 layer data, that would be sent in original packet
+	"""
+	ICMPPacket( srcAddress, dstAddress, icmpType, icmpCode, bytearray.fromhex( data ) ).inject()

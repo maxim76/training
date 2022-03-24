@@ -7,28 +7,32 @@ context = zmq.Context()
 
 # Socket to send messages on
 sender = context.socket(zmq.PUSH)
-sender.bind("tcp://*:5557")
+#sender.bind("tcp://*:5557")
+sender.connect("tcp://localhost:5558")
 
 # Socket to receive messages on
 receiver = context.socket(zmq.PULL)
-receiver.bind("tcp://*:5558")
+receiver.connect("tcp://localhost:5557")
+#receiver.bind("tcp://*:5558")
 
-print("Press Enter when the workers are ready: ")
-_ = input()
-print("Sending tasks to workers...")
+poller = zmq.Poller()
+poller.register(sender, zmq.POLLOUT)
+poller.register(receiver, zmq.POLLIN)
 
 while True:
+    print("New cycle")
+    
     try:
-        sender.send(b"Hello", zmq.NOBLOCK)
-        print("Sent")
-    except:
-        print("Failed to send")
+        socks = dict(poller.poll())
+    except KeyboardInterrupt:
+        break
 
-    try:
-        s = receiver.recv(zmq.NOBLOCK)
+    if socks.get(receiver) == zmq.POLLIN:
+        message = receiver.recv()
         print("Received something")
-    except:
-        print("Failed to receive")
 
-    time.sleep(1)
+    if socks.get(sender) == zmq.POLLOUT:
+        sender.send(b"Hello")
+        print("Sent")
+
 

@@ -15,7 +15,7 @@ class myThread (threading.Thread):
 		self.stopped = False
 		self.socket_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.socket_.bind(('', 0))
-		self.socket_.settimeout(1)
+		self.socket_.settimeout(30)
 
 
 	def run(self):
@@ -43,8 +43,8 @@ thread1.start()
 #thread2.start()
 
 #print "Exiting Main Thread"
-print "Main: thread started. Wait 1 sec"
-time.sleep(10)
+print "Main: thread started. Wait 3 sec"
+time.sleep(3)
 print "Main: Stopping thread"
 thread1.stopped = True
 #thread1.socket_.shutdown( socket.SHUT_RDWR )

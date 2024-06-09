@@ -1,0 +1,6 @@
+[requires]
+libnl/3.9.0
+
+[generators]
+CMakeDeps
+CMakeToolchain

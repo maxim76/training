@@ -96,6 +96,9 @@ int main()
 
 	const char* prog_r = kRussianSampleText;
 	const char* prog_e = kEnglishSampleText;
+	const char* prog_c = kChineseSampleText;
+	// Set breakpoint here and add Watch for `prog_*` vars to inspect content.
+	// Example: `prog_r,20` or `prog_r,s8`. s8 instruct to represent as unicode
 
 	std::cout << "cout << kEnglishSampleText : " << kEnglishSampleText << std::endl;
 	std::cout << "cout << kChineseSampleText : " << kChineseSampleText << std::endl;
@@ -174,6 +177,28 @@ int main()
 	assert(ws1 == ws1);
 	assert(ws1 < ws2);
 	assert(ws1.find(ws_token) != ws1.npos);
+
+
+	// CONVERT MULTIBYTE TO WIDESTRING
+	std::cout << "\nCONVERT MULTIBYTE TO WIDESTRING\n";
+	std::mbstate_t state = std::mbstate_t();
+
+	const char* mbstr = kRussianSampleText;		// Source multibyte string
+	std::cout << "\tMultibyte string: " << mbstr << "\n";
+
+	// Firstly, obtain length of resulting multibyte string
+	std::size_t len = std::mbsrtowcs(nullptr, &mbstr, 0, &state);
+
+	// Now define wide string of the required size and convert mbstr to wide str
+	std::wstring wstr;
+	wstr.resize(len);
+	std::mbsrtowcs(&wstr[0], &mbstr, wstr.size(), &state);
+
+	// Alternatively, wchar vestor can be used instead of wstring
+	//std::vector<wchar_t> wstr(len);
+	//std::mbsrtowcs(&wstr[0], &mbstr, wstr.size(), &state);
+
+	std::wcout << L"\tWide string: " << wstr << "\n";
 
 
 	// UNICODE FILE READ EXAMPLE

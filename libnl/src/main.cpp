@@ -161,46 +161,6 @@ int main() {
 	printf("\nAddr cache content:\n");
 	nl_cache_foreach(addr_cache, addr_cache_callback, nullptr);
 
-
-	// Task11 draft
-	printf("\nTask 11 draft(remove me):\n");
-	nl_object *obj_ptr;
-	char addr_str[ADDR_STR_BUF_SIZE];
-
-	const int addr_count = nl_cache_nitems(addr_cache);
-	obj_ptr = nl_cache_get_first(addr_cache); 
-	for(int i=0; i < addr_count; ++i) {
-		if (!obj_ptr) {
-			printf("Error during addr cache iteration\n");
-			break;
-		}
-		struct rtnl_addr * addr_ptr = (rtnl_addr *)obj_ptr;
-
-    	const struct nl_addr *nl_addr_ptr = rtnl_addr_get_local(addr_ptr);
-		if (!nl_addr_ptr) {
-			printf("rtnl_addr_get_local() failed\n");
-			return(EXIT_FAILURE);
-		}
-
-		// Skip non IPv4 addresses
-		if (nl_addr_guess_family(nl_addr_ptr) == AF_INET) {
-			const int if_index = rtnl_addr_get_ifindex(addr_ptr);
-			if (if_index == 0) {
-				printf("rtnl_link_get_ifindex() error\n");
-				continue;
-			}
-			const char *addr_s = nl_addr2str(nl_addr_ptr, addr_str, sizeof(addr_str));
-			if (!addr_s) {
-				printf("nl_addr2str() failed\n");
-				continue;
-			}
-			printf("Index: %d, addr: %s\n", if_index, addr_s);
-		}
-
-		obj_ptr = nl_cache_get_next(obj_ptr);
-	}
-
-
 	nl_socket_free(sock_ptr);
 
 }

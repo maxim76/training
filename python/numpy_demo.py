@@ -9,7 +9,7 @@ print( a.dtype, a )
 print( "Create array with specified data type" )
 a = np.array([2,3,4], dtype=np.int16)
 print( a.dtype, a )
-a = np.array([2,3,4], dtype=np.float)
+a = np.array([2,3,4], dtype=np.float64)
 print( a.dtype, a )
 
 print( "2D array" )
